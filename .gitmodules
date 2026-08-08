@@ -1,0 +1,30 @@
+[submodule "content/AI/AI-related"]
+	path = content/AI/AI-related
+	url = https://github.com/von-Neumann101/AI-related.git
+[submodule "content/AI/Deep Learning/DeepLearning for CV"]
+	path = content/AI/Deep Learning/DeepLearning for CV
+	url = https://github.com/von-Neumann101/Note-of-UMich-EECS-498-007
+[submodule "content/AI/Flow Matching and Diffusion Model"]
+	path = content/AI/Flow Matching and Diffusion Model
+	url = https://github.com/von-Neumann101/MIT-6.S184-Flow-Matching-and-Diffusion-Model.git
+[submodule "content/AI/OpenClaw"]
+	path = content/AI/OpenClaw
+	url = https://github.com/von-Neumann101/OpenClaw-analysis.git
+[submodule "content/CS/CS170"]
+	path = content/CS/CS170
+	url = https://github.com/von-Neumann101/CS170-notes.git
+[submodule "content/CS/CS61A"]
+	path = content/CS/CS61A
+	url = https://github.com/von-Neumann101/CS61A-note
+[submodule "content/CS/CS61B"]
+	path = content/CS/CS61B
+	url = https://github.com/von-Neumann101/CS61B-note
+[submodule "content/CS/CSAPP"]
+	path = content/CS/CSAPP
+	url = https://github.com/von-Neumann101/CSAPP-notes
+[submodule "content/CS/MIT 6.042J"]
+	path = content/CS/MIT 6.042J
+	url = https://github.com/von-Neumann101/MIT-6.042J-notes.git
+[submodule "content/Math"]
+	path = content/Math
+	url = https://github.com/von-Neumann101/Math.git
