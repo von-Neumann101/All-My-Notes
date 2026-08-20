@@ -1,0 +1,146 @@
+和其他课不同的是，机器级的变成作为用C语言或者其他语言编写程序与这些程序实际执行之间的桥梁
+>x86是Intel处理器的俗称，或者为CISC(complex instruction set computer)
+>RISC(reduced instruction set computer)
+# C, assembly, machine code
+ARM的指令集更加简单而且可以定制（只卖设计，不买芯片）
+![[Pasted image 20260427091447.png]]
+对于汇编程序来说，cache是透明的，完全由程序控制
+## Definition
+指令集——编译器的目标，给一系列指令，告诉机器要做什么
+Architecture：处理器设计中，为了理解或编写汇编代码/机器代码所需要了解的那些部分
+Machine code包括位（正在执行的字节），也包括其汇编版本
+## 汇编和机器语言的视角
+![[Pasted image 20260426161735.png|509]]
+指令(Instruction)中有——机器状态
+- PC: 程序计数器
+告诉你下一条要执行的指令的地址
+- 寄存器
+数量很少的内存位置，通过**特定名称**来指代地址（而不是像内存中用数字）
+- Condition codes
+只有几个bits，用来表示最近一些指令的结果
+## Turning C into Object Code
+代码变为Object Code的过程：
+![[Pasted image 20260426162339.png]]
+
+## Compiling Into Assembly
+![[Pasted image 20260426162513.png]]%rxx是寄存器的实际名称，其前面的word告诉这个寄存器干嘛
+pushq——把某些东西压入[[07-procedures#^c5d394|栈]]，movq——把xx移动到xx，call——调用，popq——pushq相反的操作，ret——返回/退出
+> [!NOTE] 汇编语言如何知道需要返回哪一个变量？
+> [[07-procedures#^1859db|ABI规定了]]：函数返回时，结果必须在 `%rax` 中
+
+`>>> gcc -Og -S sum.c`——调用gcc时，调用一系列执行编译各个阶段的程序，-S代表stop（在“此处”停下，只做第一部分：C to Assembly），-Og告诉编译器执行的优化规范（如果没有，会生成完全没有优化的代码（易读性极差））
+这会生成一个sum.s文件（汇编）
+![[Pasted image 20260426164301.png|368]]
+这些以"`.`"开头的都不是指令（现阶段不用考虑）
+## Assembly Characteristics
+### Data Types(Assembly)
+和C或者Java里说的数据类型不同，这里指的是——**汇编语言/机器级别里能直接区分的数据类型**
+![[Pasted image 20260511162109.png|489]]
+- Integer有多种类型
+	1 byte char / byte  
+	2 bytes short  
+	4 bytes int  
+	8 bytes long / pointer
+
+> 在机器层面，程序代码也是一串字节，这些字节按照某种规则编码成一条条机器指令
+> 在汇编层面，数据本质上就是一串字节；所谓“类型”主要指这些字节的**大小**（Integer有short...）和**解释方式**（Integer可以为地址也可以为数据的值）。
+### Operations
+汇编语言中，一个指令的作用不大（主要都是移动数据到其他寄存器，加法乘法一类的）
+## Machine Instruction Example
+三个层级的代码：
+![[Pasted image 20260426165349.png|513]]
+在机器执行的过程中，代码表示只有三个字节，`48 89 03`代表：从地址 **0x40059e** 开始的 3 个字节，是这条指令的编码（这条指令——48 89 03，存放在内存的这个位置）
+## 反汇编目标代码
+把Object Code变成汇编语言，例如：
+`0x40059e:  48 89 03 -> movq %rax, (%rbx)`
+对于语法来说，后面的三个字节即可**还原指令**
+但是对于程序结构，跳转，函数等，反汇编需要**依赖前面的地址**
+# Assembly Basics: Registers, operands, move
+## x86-64 Integer Registers
+![[Pasted image 20260427090007.png|507]]
+对于每个寄存器，使用%rxx的名字，会得到64位(long)，而使用%exx版本就是32位(int)
+**%exx版本是%rxx的低位32位**
+%rsp——stack Register（不能随意使用）
+## Moving Data
+`movq Source, Dest:`
+**Operand Types:**
+- Immediate: 内置在程序中的数字（以"`$`"开头）
+- Register: 寄存器
+- Memory: 地址`(%rax)`
+> [!NOTE] `()`
+> 注意，寄存器没有所谓的“内存地址”，访问寄存器只能使用其名字。`(x)`的作用，是把x当做地址来访问对应内存地址处的数据。
+> 同时，如果`()`里写的是用来寻址的寄存器，必须要用64位的“数据寄存器”（对于x86-64）
+
+![[Pasted image 20260427091726.png|625]]
+内存到内存只能**先从内存到寄存器，再从寄存器到内存**
+## Simple Memory Addressing Modes
+`movq (%rcx), %rax`这里就相当于解引用->`temp = *p`
+`()` 表示：**把括号里的表达式当作“地址”，*去内存中取这个地址上的值***
+`8(%rbp)`则代表偏移八个字节取值-> `*(rbp + 8)`
+![[Pasted image 20260427093323.png|312]]![[Pasted image 20260427093343.png|311]]
+## Complete Memory Addressing Modes
+![[Pasted image 20260427094939.png|498]]
+```
+a = A[i]  ->  movq (%rbx, %rcx, 4), %rax (address = base + i * sizeof(int))
+                                                     Rb    Ri      S
+```
+## Address Computation Instruction
+`leaq Src, Dst`
+leaq仅仅是计算——把Src当做地址表达式计算出来的值赋给Dst，把计算出的**地址**（注意，这是一个值），直接写入寄存器
+比如leaq可以做"`&`"的功能-> `p = &x[i]`
+`leaq` = 一个“免费”的整数表达式计算器（只要是 `base + index*scale + offset` 这种形式）。所以说，leaq其实和地址没有关系
+**Example**:
+```c
+long m12(long x) {
+    retruen x * 12;
+}
+```
+变成汇编语言就是
+```
+leaq (%rdi,%rdi,2), %rax
+salq $2, %rax
+```
+第一句：Src为`%rdi + 2*%rdi`赋值给`%rax`
+第二句：`%rax`左移两位
+> [!NOTE] 移位
+> 移位命令有一个很奇怪的规则——移位量要么是立即数，要么是%cl(%rcx的低一字节)。如果是后面的一种情况，对**w位长**的数据值进行操作，移位量由%cl的低$\log_2w$位决定。
+> 例如，%cl为0xFF时，salb移动$1111\ 1111_2$的前$\log_2 8=3$位，也就是$111_2=7_{10}$位
+## Some Arithmetic Operations
+![[Pasted image 20260427102405.png|577]]
+![[Pasted image 20260427103734.png|328]]
+## Arithmetic Expression Example
+![[Pasted image 20260427103823.png|249]]
+![[Pasted image 20260427103827.png|352]]
+![[Pasted image 20260427103838.png|278]]
+# 低n位表示
+| 64 位   | 32 位   | 16 位  | 低 8 位 | 高 8 位 |
+| ------ | ------ | ----- | ----- | ----- |
+| `%rax` | `%eax` | `%ax` | `%al` | `%ah` |
+| `%rbx` | `%ebx` | `%bx` | `%bl` | `%bh` |
+| `%rcx` | `%ecx` | `%cx` | `%cl` | `%ch` |
+| `%rdx` | `%edx` | `%dx` | `%dl` | `%dh` |
+
+|64 位|32 位|16 位|低 8 位|
+|---|---|---|---|
+|`%rsi`|`%esi`|`%si`|`%sil`|
+|`%rdi`|`%edi`|`%di`|`%dil`|
+|`%rsp`|`%esp`|`%sp`|`%spl`|
+|`%rbp`|`%ebp`|`%bp`|`%bpl`|
+
+|64 位|32 位|16 位|低 8 位|
+|---|---|---|---|
+|`%r8`|`%r8d`|`%r8w`|`%r8b`|
+|`%r9`|`%r9d`|`%r9w`|`%r9b`|
+|`%r10`|`%r10d`|`%r10w`|`%r10b`|
+|`%r11`|`%r11d`|`%r11w`|`%r11b`|
+|`%r12`|`%r12d`|`%r12w`|`%r12b`|
+|`%r13`|`%r13d`|`%r13w`|`%r13b`|
+|`%r14`|`%r14d`|`%r14w`|`%r14b`|
+|`%r15`|`%r15d`|`%r15w`|`%r15b`|
+# 特殊算术操作
+![[Pasted image 20260516103719.png]]
+注意，**这里`R[%rdx]:R[%rax]`代表一个128位的数的高64位在`%rdx`里，低64位在`%rax`里**（所以，如果被除数是一个64位数，%rdx就是全0或者全%rax符号位，%rax为该64位数）
+> [!NOTE] 勘误
+> 这里电子书有误——除完的结果保存在`%rax`中
+
+`cqto`：把 `%rax` 里的 64 位有符号数，符号扩展成 128 位，结果放在 `%rdx:%rax` 里。

@@ -1,0 +1,253 @@
+本节的目标是**训练**Flow Model——确定一个好的参数$\theta$，以使得输出的分布尽可能服从$p_{data}$
+我们的信息量——数据$x_1,x_2,\ldots,x_N\sim p_{data}$，除此以外我们对这个分布一无所知
+![[Pasted image 20260605145547.png|594]]
+# Probability Paths
+注意这里和Flow暂时没有关系，这里只是背景介绍
+![[Pasted image 20260605144410.png]]
+$x$是一个向量（数据点）
+Dirac Distribution：$x\sim\delta_z\Longleftrightarrow x=z$（没有随机，没有概率，只是把等式当成一个分布）
+## Conditional Probability Paths
+**条件概率路径**：一个关于$x$和$z$的函数$p_t(x\mid z)\quad 0\le t\le 1,\ x,z\in\mathbb{R}^d$，满足如下条件：
+- 给定$t,z$的条件概率路径是一个概率分布
+- $p_0(\cdot\mid z)=\underbrace{p_{init}}_{与数据点z无关}$，且$p_1(\cdot\mid z)=\delta_z$
+
+ ![[Pasted image 20260605151141.png|524]]
+条件概率路径把初始噪声分布逐渐变成以 $z$ 为中心、方差逐渐减小的分布（给定的$z$的狄拉克分布）
+- Noise schedulers：随时间变化的系数$\alpha_t,\beta_t\in\mathbb{R}，满足\alpha_0=\beta_1=0,\ \alpha_1=\beta_0=1$
+
+我们将**高斯概率路径**（常用）定义为$p_t(\cdot\mid z)=\mathcal{N}(\alpha_tz,\beta_t^2 I_d)$
+>Proof.
+>给定一个z，这是一个高斯分布（是一个概率分布）
+>t=0的时候是标准高斯分布，t=1的时候是$\mathcal{N}(z,0)=\delta_z$（均值为$z$，方差为0的正态分布）
+## Marginal Probability Paths
+不是针对单个数据点——我们让数据点$z$变为随机的，不再关心$z$
+**边缘化(marginalization)：全概率公式的连续版本**
+**边缘概率路径**：一个关于$x$的函数$p_t(x)$是一个分布，满足
+- $p_0=p_0(x)$和$z$无关，$p_1=p_{data}$
+
+先$z\sim p_{data}$，然后通过条件概率路径$x\sim p_t(\cdot\mid z)$采样得到$x$，最后固定每一个$z$，得到$p_t(x)$，也就是：
+$$
+p_t(x)=\int p_t(x\mid z)p_{data}(z)dz
+$$
+对于每个数据点$z\sim p_{data}$，按照概率收束世界线为一条
+![[Pasted image 20260704222937.png]]
+## 对比
+![[Pasted image 20260605155021.png]]
+所以，probability path 描述的是“分布如何连续地从一个形态变成另一个形态”（Noise->Data）
+# Vector Field
+## Conditional Vector Field
+**条件向量场**（对应ODE的VF）是由一个函数定义$u_t^{target}(x\mid z)\in\mathbb{R}^d$向量场，使得对于一个$x_0\sim p_{init}$，并对其进行ODE演化，能让这个$x$跟随**条件概率路径**($X_t\sim p(\cdot \mid z)$)——对应ODE的Trajectory
+$$
+X_0\sim p_{init},\ dX_t=u_t^{target}(X_t\mid z)dt\Longrightarrow X_t\sim p_t(\cdot\mid z)
+$$
+最终坍缩为一个点（条件概率路径）
+目前我们在做的事情——如何从一个高斯噪声分布变为一个**已知数据点**
+## Marginal Vector Field
+$$
+u_t^{target}(x)=\int u_t^{target}(x\mid z)\underbrace{\frac{p_t(x\mid z)p_{data}(z)}{p_t(x)}}_{由贝叶斯得到的后验分布}dz
+$$
+这里是对路径的加权求和：现在有很多（无穷——因为是积分）的数据点$z$，每个$x$在一个条件VF被吸引到$z$的程度，我们对这个进行加权求和
+![[Pasted image 20260605162431.png|177]]
+那么他有如下的**重要性质**
+$$
+X_0\sim p_{init},\ dX_t=u_t^{target}(X_t)dt\Longrightarrow X_t\sim p_t(x)，特别地：X_1\sim p_{data}
+$$
+一样的，这里是从初始分布沿着**边缘概率路径**到数据分布
+Marginal Vector Field 的作用就是定义一个 ODE，把初始分布$p_{\text{init}}$推到数据分布 $p_{\text{data}}$——这正是我们要学习的（下图中的箭头）
+![[vector_field_and_samples_moons.gif]]
+### Continuity Equation
+证明：Marginal Vector Field使得$p_{\text{init}}$变为$p_{\text{data}}$
+给定了一个ODE，有等价关系
+$$
+X_t\sim p_t\Longleftrightarrow\underbrace{\frac{d}{dt}p_t(x)=-\mathrm{div}(p_tu_t)(x)}_{\text{Continuity Equation}}
+$$
+在MVF的演变下，每个时刻$X_t\sim p_t$，当且仅当**Continuity Equation**成立，接下来只需要证明该微分方程成立即可：
+积分算子，微分算子，nabla算子此处可交换
+$$
+\frac{d}{dt}p_t(x)=\frac{d}{dt}\int p_t(x\mid z)p_{data}(z)dz=\int \frac{d}{dt} p_t(x\mid z)p_{data}(z)dz
+$$
+***注意：我们对$u_t^{target}(x\mid z)$的定义是使得分布能按照CPP到$z$的VF，所以他自然满足连续性方程。此外，课上在这里的写法是错误的，因为$p_t(\cdot \mid z)$是分布而不是函数***
+$$
+=-\int\mathrm{div}(p_tu_t^{target})(x \mid z)p_{data}(z)dz=-\nabla\cdot\int p_t(x\mid z)u_t^{target}(x\mid z)p_{data}(z)dz
+$$
+注意到MVF的定义式（$p_t(x)$和$z$无关）：
+$$
+=-\nabla\cdot p_t(x)\int u_t^{target}(x\mid z)\frac{p_t(x\mid z)p_{data}(z)}{p_t(x)}dz=-\nabla\cdot p_t(x)u_t(x)
+$$
+# Flow Matching
+“学习Marginal Vector Field”
+目标：训练一个Neural  Net：$u_t^\theta(x)$，使得$u_t^\theta\approx u_t^{target}$
+
+Flow Matching的损失函数为：
+$$
+L_{FM}(\theta)=\mathbb{E}[||u_t^\theta(x)- u_t^{target}(x)||^2]
+$$
+我们注意到这里有部分是不可计算的（它要把所有$z\sim p_{data}$的条件路径混合），但是我们知道一个性质，使得损失函数最小的解恰好就是$u_t^{target}$（这里确实看着像废话，我们接着往下看）
+我们**唯一能做**的是——求$u_t^{target}(x\mid z)$——之所以它能求，是因为**条件概率路径好求**（准确来说，并非好求，而这是可以人为定义的，比如高斯概率路径）
+所以我们写为**Conditional FM Loss**
+$$
+L_{\mathrm{CFM}}(\theta)
+=
+\mathbb{E}_{t,z,x}
+\left[
+\left\|
+u_t^\theta(x)-u_t(x\mid z)
+\right\|^2
+\right]\qquad z\sim p_{data},\ x\sim p_t(\cdot\mid z),\ t为0到1之间的随机数
+$$
+我们令
+$$
+Y=u_t(x\mid Z),
+\qquad
+m=u_t(x)
+=
+\mathbb{E}[Y\mid t,x].
+$$
+则
+$$
+\begin{aligned}
+L_{\mathrm{CFM}}(\theta)
+&=
+\mathbb{E}
+\left[
+\left\|
+u_t^\theta(x)-Y
+\right\|^2
+\right]
+\\
+&=
+\mathbb{E}
+\left[
+\left\|
+u_t^\theta(x)-m+m-Y
+\right\|^2
+\right]
+\\
+&=
+\mathbb{E}
+\left[
+\left\|
+u_t^\theta(x)-m
+\right\|^2
+\right]
++
+\mathbb{E}
+\left[
+\left\|
+m-Y
+\right\|^2
+\right]
+\\
+&\quad+
+2\mathbb{E}
+\left[
+\left(
+u_t^\theta(x)-m
+\right)
+\cdot
+\left(
+m-Y
+\right)
+\right].
+\end{aligned}
+$$
+交叉项为
+$$
+\begin{aligned}
+&\mathbb{E}
+\left[
+\left(
+u_t^\theta(x)-m
+\right)
+\cdot
+\left(
+m-Y
+\right)
+\right]
+\\
+&=
+\mathbb{E}_{t,x}
+\left[
+\left(
+u_t^\theta(x)-m
+\right)
+\cdot
+\mathbb{E}
+\left[
+m-Y
+\mid t,x
+\right]
+\right]
+\\
+&=
+\mathbb{E}_{t,x}
+\left[
+\left(
+u_t^\theta(x)-m
+\right)
+\cdot
+0
+\right]
+\\
+&=0.
+\end{aligned}
+$$
+因此
+$$
+L_{\mathrm{CFM}}(\theta)
+=
+\mathbb{E}
+\left[
+\left\|
+u_t^\theta(x)-u_t(x)
+\right\|^2
+\right]
++
+\mathbb{E}
+\left[
+\left\|
+u_t(x)-u_t(x\mid z)
+\right\|^2
+\right].
+$$
+也就是
+$$
+L_{\mathrm{CFM}}(\theta)
+=
+L_{\mathrm{FM}}(\theta)
++
+\mathbb{E}
+\left[
+\left\|
+u_t(x)-u_t(x\mid z)
+\right\|^2
+\right].
+$$
+令
+$$
+C
+=
+-
+\mathbb{E}
+\left[
+\left\|
+u_t(x)-u_t(x\mid z)
+\right\|^2
+\right],
+$$
+则
+$$
+L_{\mathrm{CFM}}(\theta)+C
+=
+L_{\mathrm{FM}}(\theta).
+$$
+这是一个非常有用的性质，或者说，**我们进行了一些计算，使得一个不可计算的式子在我们指定的了条件概率路径以后变为了可计算的式子**（我们一般**取**条件概率路径为**高斯概率路径**）
+
+总结一下，我们不仅让这个式子可以计算，还使得Loss最小当且仅当$u_t^\theta=u_t^{target}$
+于是我们得到了一个完全不用ODE模拟的方法（如果不使用这个方法，我们只能用最朴素的神经网络训练方法来做：算出结果 → 和数据集目标比较 → 反向传播，也就是每次要进行一次ODE，拿输出数据点和真实数据比较，然后反向传播。同时通过LCM我训练的东西更加直接——过程，而非用ODE模拟后得到的结果反推）
+![[Pasted image 20260606100917.png]]
+之前说了，条件概率路径使用**高斯概率路径**，我们可以写出具体的式子
+![[Pasted image 20260606102908.png]]
+最简单的选择是$\alpha_t=t,\beta_t=1-t$，相当于是在最终的数据分布和初始的高斯分布之间做线性插值
+![[Pasted image 20260606104103.png|370]]
+#概率路径 #Flow-Matching #向量场 #ODE
