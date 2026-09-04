@@ -123,8 +123,8 @@ V ( S _ { t } ) \gets V ( S _ { t } ) +
 $$
 ## Q-Learning
 这是不用Importance Sampling的Off-Policy Learning的方法：
-1. 从behavior policy里采样：$A_{t+1}\sim\mu(\cdot\mid S_{t+1})$，作为下一步动作
-2. 从target policy里才有：$A'\sim\pi(\cdot\mid S_{t+1})$，是本来应该做的动作
+1. 从behavior policy里采样：$A_{t+1}\sim\mu(\cdot\mid S_{t})$，作为下一步动作
+2. 从target policy里采样：$A'\sim\pi(\cdot\mid S_{t})$，是本来应该做的动作
 3. 更新：$$Q ( S _ { t }, A _ { t } ) \gets Q ( S _ { t }, A _ { t } ) + \alpha\left( R _ { t + 1 } + \gamma Q ( S _ { t + 1 }, A ^ { \prime } ) - Q ( S_ { t }, A _ { t } ) \right)$$
 ### Off-Policy Control with Q-Learning
 注意Bellman最优方程：
@@ -141,8 +141,11 @@ $$
 $$
 由此可以看出这是符合Bellman Equation的
 
+**Off-Policy和On-Policy的本质区别是，前者模型看到的世界是他自己探索的，而后者模型看到的世界是由Behavior Policy探索的**
+
 伪代码：
 ![[Pasted image 20260819181408.png|605]]
 # Summary
 ![[Pasted image 20260819181511.png|689]]
 
+#Q-Learning
