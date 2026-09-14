@@ -138,8 +138,8 @@ $$\mathbf{x}(S,A) = \begin{pmatrix} x_1(S,A)\\ \vdots\\ x_n(S,A) \end{pmatrix}$$
 ## Convergence
 ### Baird’s Counterexample
 这里使用SARSA等TD方法，会出现问题：
-![[Pasted image 20260903164251.png|626]]
-![[Pasted image 20260903164312.png|581]]
+![[Pasted image 20260903164251.png|539]]
+![[Pasted image 20260903164312.png|555]]
 所以TD不一定收敛，这取决于我们**Bootstrap的程度**
 ### Convergence of Prediction Algorithms
 目前只考虑Prediction 算法的收敛
@@ -153,3 +153,29 @@ $$
 $(\checkmark)$表示在最优值周围震荡，而无法收敛到最优值
 
 这一块辩证的看，毕竟这是老教材了。目前有了新的方法
+# Batch Methods
+Batch——Agent's life
+## Least Squares Prediction
+和监督学习一样，我们创建一个数据集，然后在里面随机采样数据（这样我们可以高效利用数据）：
+![[Pasted image 20260905101853.png|539]]
+
+这里的$\hat v(s,\mathbf w)$是最小二乘解，我们使用**经验回放**来找到找到这个解
+### Experience Replay
+![[Pasted image 20260905154856.png|470]]
+和之前的TD以及MC不同，我们把episode拆开并打乱，极大地**减少了样本之间的相关性**。这样会防止让模型连续拟合多个差别很大的流形（产生冲突），产生不稳定
+### Experience Replay in Deep Q-Networks (DQN)
+![[Pasted image 20260905155755.png|623]]
+下标 $i$ 表示第 $i$ 次迭代
+Fixed Q-target指的是我们保留两个不同的Q网络，举个例子：
+这里注意到（虽然这里是$v$而不是$Q$，但是形式是一样的）我们一直**要prediction向着一个变化的label更新**，这样可能会产生不稳定的**正反馈**：
+$$
+L ( w ) = \frac { 1 } { 2 } \left( R_{t+1}+\gamma \hat v(S',w)  - \hat { v } ( S, w ) \right) ^ { 2 }
+$$
+
+为了解决这个问题，我们把target变成：
+$$
+y _ { t } = r + \gamma \operatorname * { m a x } _ { a ^ { \prime } } Q ( s ^ { \prime }, a ^ { \prime } ; w ^ { - } ).
+$$
+这里$w^-$是代表旧网络，比如第$i-1000$次迭代的参数（固定一段时间）
+
+这里可以使得网络稳定收敛
