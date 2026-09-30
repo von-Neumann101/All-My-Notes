@@ -25,7 +25,7 @@ Attention：
 
 为了提高性能，我们需要矩阵运算：
 ![[Pasted image 20260729115726.png]]
-注意到$X$被用在多个地方——和查询向量生成权重（softmax前），作为数据被加权。我们需要**分离这两种用法**，具体的做法**交给神经网络来处理**——我们多加两个可学习参数$W_K,W_V$。于是我们有了Keys和Values的概念
+注意到$X$被用在多个地方——和查询向量生成权重（softmax前），作为数据被加权。我们需要**分离这两种用法**，具体的做法**交给神经网络来处理**（当然，还有一种直接的解释，因为矩阵大小不匹配）——我们多加两个可学习参数$W_K,W_V$。于是我们有了Keys和Values的概念
 ![[Pasted image 20260729115314.png]]
 $$\mathrm{Attention}(Q,K,V)=\mathrm{softmax}\!\left(\frac{QK^{\top}}{\sqrt{d_k}}\right)V$$
 美化一下：
@@ -47,17 +47,18 @@ $$
 { ( R ( \theta _ { i } ) q _ { i } ) ^ { T } ( R ( \phi _ { j } ) k _ { j } ) } \\ { = q _ { i } ^ { T } R ( \phi _ { j } - \theta _ { i } ) k _ { j } } \\
 $$
 ## 掩码
-在我们一直使用的例图中$Y_1=A_{1,1}V_1+A_{1,2}V_2+A_{1,3}V_3$
-在训练时，我们如果输入"Attension is cool"这个句子作为训练数据：
-由于$V_2$几乎等同于is，$V_3$几乎等同于cool，预测第二个词的时候显然是把$A_{2,2}$拉满最好，因为第二个词正确答案就是is（这么做loss最小），这就会把模型训坏
+再次申明，Query向量的作用是对Key向量进行查询，可以得到想要对文本的哪个部分进行关注，再通过加权求和来得到结果。
+但是，由于自回归的属性，在生成第一个token时，**Query向量能看到这个token之后的数据**，那么显然预测后面的那个字就会更关注$V_2$，但这是一种作弊，可能会把模型训坏。
 所以我们在训练时不能让模型查看到未来，所以：
 ![[Pasted image 20260729150458.png]]
+这里要**竖着看**，就拿第一行举例
 ## Multiheaded Self-Attention Layer
 ![[Pasted image 20260729150829.png]]
 用多个注意层在同一个序列上**并行**运行注意力，然后将输出的向量拼接。这里$O_i$就相当于单个注意力层输出的$Y_i$
 ## The Transformer
 ![[Deep Learning/DeepLearning for CV/L15 Attention and Transformer/Pic/image-3.png|430]]
 在上述的多头注意力层后，我们对输出序列的每个token都施加一个MLP（同一个参数）
+注意，Encoder可以提前算，也就是说，运行时不断循环计算的只是Decoder的部分
 # ViT
 ![[Pasted image 20260729152539.png]]
 这里把图片切为**Patches**然后展平为一维向量——一个 patch 相当于一个 token；这个 patch 展平后再经过线性投影，得到的向量相当于该 token 的 embedding
